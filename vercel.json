@@ -1,8 +1,13 @@
 {
   "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
+    "api/fetch-chatgpt.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/fetch-chatgpt"
+    }
+  ]
 }
