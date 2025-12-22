@@ -58,11 +58,22 @@ export default async function handler(req, res) {
     
     console.log('[Puppeteer API] 頁面載入完成，等待渲染...');
     
-    // 等待頁面完全載入
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // 嘗試等待對話元素出現
+    try {
+      await page.waitForSelector('article, [data-testid], .group', { timeout: 10000 });
+      console.log('[Puppeteer API] 找到對話元素');
+    } catch (e) {
+      console.log('[Puppeteer API] 無法找到對話元素，繼續等待...');
+    }
+    
+    // 延長等待時間到 10 秒
+    await new Promise(resolve => setTimeout(resolve, 10000));
     
     // 獲取渲染後的 HTML
     const html = await page.content();
+    
+    // 輸出 HTML 的前 1000 字元供調試
+    console.log('[Puppeteer API] HTML 片段:', html.substring(0, 1000));
     
     console.log(`[Puppeteer API] HTML 長度: ${html.length} 字元`);
     
