@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import chromium from '@sparticuz/chromium';
 
-puppeteer.use(StealthPlugin());ium';
+puppeteer.use(StealthPlugin());
 
 export default async function handler(req, res) {
   // 設定 CORS 標頭
