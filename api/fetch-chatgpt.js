@@ -35,6 +35,9 @@ export default async function handler(req, res) {
   try {
     console.log('[Puppeteer API] 正在啟動瀏覽器...');
     
+    // 關閉 WebGL （可能會影響渲染）
+    chromium.setGraphicsMode = false;
+    
     // 啟動 Puppeteer with Serverless Chromium
     browser = await puppeteer.launch({
       args: [
