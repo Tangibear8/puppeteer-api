@@ -1,8 +1,5 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteer from 'puppeteer';
 import chromium from '@sparticuz/chromium';
-
-puppeteer.use(StealthPlugin());
 
 export default async function handler(req, res) {
   // 設定 CORS 標頭
@@ -40,7 +37,13 @@ export default async function handler(req, res) {
     
     // 啟動 Puppeteer with Serverless Chromium
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        // 反偵測參數
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-web-security',
+      ],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
@@ -48,8 +51,39 @@ export default async function handler(req, res) {
 
     const page = await browser.newPage();
     
-    // 設定 User-Agent
+    // 設定真實的 User-Agent
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // 隱藏 webdriver 特徵
+    await page.evaluateOnNewDocument(() => {
+      // 覆蓋 navigator.webdriver
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+      });
+      
+      // 覆蓋 chrome 物件
+      window.chrome = {
+        runtime: {},
+      };
+      
+      // 覆蓋 permissions
+      const originalQuery = window.navigator.permissions.query;
+      window.navigator.permissions.query = (parameters) => (
+        parameters.name === 'notifications' ?
+          Promise.resolve({ state: Notification.permission }) :
+          originalQuery(parameters)
+      );
+      
+      // 覆蓋 plugins
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      });
+      
+      // 覆蓋 languages
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+    });
     
     console.log(`[Puppeteer API] 正在載入頁面: ${shareUrl}`);
     
@@ -152,6 +186,7 @@ export default async function handler(req, res) {
     
     console.log(`[Puppeteer API] 提取到 ${conversationData.messages.length} 則訊息`);
     console.log(`[Puppeteer API] 標題: ${conversationData.title}`);
+    console.log(`[Puppeteer API] Debug 資訊:`, JSON.stringify(conversationData.debug));
     
     await browser.close();
     
@@ -160,6 +195,7 @@ export default async function handler(req, res) {
       success: true,
       messages: conversationData.messages,
       title: conversationData.title,
+      debug: conversationData.debug,
       shareUrl
     });
 
