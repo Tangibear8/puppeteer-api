@@ -1,7 +1,15 @@
 import puppeteer from 'puppeteer';
 
 export default async function handler(req, res) {
-  // 只接受 POST 請求
+  // 支援 GET 和 POST 請求
+  if (req.method === 'GET') {
+    return res.status(200).json({ 
+      message: 'Puppeteer API for ChatGPT Conversation Fetching',
+      status: 'running',
+      usage: 'POST /api/fetch-chatgpt with { "shareUrl": "https://chatgpt.com/share/..." }'
+    });
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
