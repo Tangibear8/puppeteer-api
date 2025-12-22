@@ -37,13 +37,7 @@ export default async function handler(req, res) {
     
     // 啟動 Puppeteer with Serverless Chromium
     browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        // 反偵測參數
-        '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process',
-        '--disable-web-security',
-      ],
+      args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
@@ -51,39 +45,8 @@ export default async function handler(req, res) {
 
     const page = await browser.newPage();
     
-    // 設定真實的 User-Agent
+    // 設定 User-Agent
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    
-    // 隱藏 webdriver 特徵
-    await page.evaluateOnNewDocument(() => {
-      // 覆蓋 navigator.webdriver
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => false,
-      });
-      
-      // 覆蓋 chrome 物件
-      window.chrome = {
-        runtime: {},
-      };
-      
-      // 覆蓋 permissions
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => (
-        parameters.name === 'notifications' ?
-          Promise.resolve({ state: Notification.permission }) :
-          originalQuery(parameters)
-      );
-      
-      // 覆蓋 plugins
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
-      });
-      
-      // 覆蓋 languages
-      Object.defineProperty(navigator, 'languages', {
-        get: () => ['en-US', 'en'],
-      });
-    });
     
     console.log(`[Puppeteer API] 正在載入頁面: ${shareUrl}`);
     
@@ -104,21 +67,8 @@ export default async function handler(req, res) {
       console.log('[Puppeteer API] 無法找到 assistant 訊息，嘗試繼續...');
     }
     
-    // 滾動頁面以觸發懶載入
-    console.log('[Puppeteer API] 滾動頁面以載入所有內容...');
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    await page.evaluate(() => {
-      window.scrollTo(0, 0);
-    });
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // 再等待 10 秒確保所有元素都載入完成
-    console.log('[Puppeteer API] 等待內容完全渲染...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // 再等待 5 秒確保所有元素都載入完成
+    await new Promise(resolve => setTimeout(resolve, 5000));
     console.log('[Puppeteer API] 等待完成，開始提取對話...');
     
     // 執行 JavaScript 提取對話內容
@@ -139,36 +89,6 @@ export default async function handler(req, res) {
       const userElements = document.querySelectorAll('[data-message-author-role="user"]');
       const assistantElements = document.querySelectorAll('[data-message-author-role="assistant"]');
       
-      // 更詳細的 assistant 元素分析
-      let assistantDebug = {};
-      if (assistantElements.length > 0) {
-        const firstAssistant = assistantElements[0];
-        const parent = firstAssistant.parentElement;
-        const nextSibling = firstAssistant.nextElementSibling;
-        
-        assistantDebug = {
-          'self': {
-            'outerHTML': firstAssistant.outerHTML.substring(0, 1000),
-            'innerHTML': firstAssistant.innerHTML.substring(0, 500),
-            'textContent': firstAssistant.textContent.substring(0, 200),
-            'childElementCount': firstAssistant.childElementCount,
-            'classList': Array.from(firstAssistant.classList)
-          },
-          'parent': parent ? {
-            'tagName': parent.tagName,
-            'classList': Array.from(parent.classList),
-            'outerHTML': parent.outerHTML.substring(0, 1500),
-            'childElementCount': parent.childElementCount
-          } : null,
-          'nextSibling': nextSibling ? {
-            'tagName': nextSibling.tagName,
-            'classList': Array.from(nextSibling.classList),
-            'outerHTML': nextSibling.outerHTML.substring(0, 1000),
-            'textContent': nextSibling.textContent.substring(0, 200)
-          } : null
-        };
-      }
-      
       const debug = {
         'total': allElements.length,
         'user': userElements.length,
@@ -176,11 +96,7 @@ export default async function handler(req, res) {
         'data-message-id': document.querySelectorAll('[data-message-id]').length,
         'article': document.querySelectorAll('article').length,
         '.group': document.querySelectorAll('.group').length,
-        'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null,
-        'sampleAssistantHTML': assistantElements.length > 0 ? assistantElements[0].innerHTML.substring(0, 500) : null,
-        'sampleUserText': userElements.length > 0 ? userElements[0].textContent.substring(0, 100) : null,
-        'sampleUserHTML': userElements.length > 0 ? userElements[0].innerHTML.substring(0, 500) : null,
-        'assistantDebug': assistantDebug
+        'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null
       };
       
       // 提取對話訊息（使用更精確的 selector）
@@ -200,68 +116,16 @@ export default async function handler(req, res) {
         const role = el.getAttribute('data-message-author-role');
         
         // 只提取實際對話內容，過濾掉標籤
+        // 嘗試多種方式提取內容
         let content = '';
         
-        // 針對不同角色使用不同的提取策略
-        if (role === 'assistant') {
-          // Assistant 訊息：內容可能在父元素或相鄰元素中
-          
-          // 策略1：在父元素中尋找內容
-          const parent = el.parentElement;
-          if (parent) {
-            const contentSelectors = [
-              '.markdown',
-              '.prose',
-              '[data-message-content]',
-              '.whitespace-pre-wrap'
-            ];
-            
-            for (const selector of contentSelectors) {
-              const contentEl = parent.querySelector(selector);
-              if (contentEl && contentEl.textContent.trim() && !contentEl.closest('[data-message-author-role]')) {
-                content = contentEl.textContent.trim();
-                break;
-              }
-            }
-          }
-          
-          // 策略2：在相鄰元素中尋找
-          if (!content) {
-            let sibling = el.nextElementSibling;
-            while (sibling && !content) {
-              if (sibling.textContent.trim() && !sibling.hasAttribute('data-message-author-role')) {
-                content = sibling.textContent.trim();
-                break;
-              }
-              sibling = sibling.nextElementSibling;
-            }
-          }
-          
-          // 策略3：在元素內部尋找
-          if (!content) {
-            const selectors = [
-              '.markdown',
-              '.prose',
-              '[data-message-content]',
-              '.whitespace-pre-wrap'
-            ];
-            
-            for (const selector of selectors) {
-              const contentEl = el.querySelector(selector);
-              if (contentEl && contentEl.textContent.trim()) {
-                content = contentEl.textContent.trim();
-                break;
-              }
-            }
-          }
+        // 方法1：尋找內容區域
+        const contentDiv = el.querySelector('[data-message-content], .markdown, .prose');
+        if (contentDiv) {
+          content = contentDiv.textContent.trim();
         } else {
-          // User 訊息：使用原有邏輯
-          const contentDiv = el.querySelector('.whitespace-pre-wrap, [data-message-content]');
-          if (contentDiv) {
-            content = contentDiv.textContent.trim();
-          } else {
-            content = el.textContent.trim();
-          }
+          // 方法2：直接使用元素內容
+          content = el.textContent.trim();
         }
         
         // 過濾掉標籤和空白
@@ -285,12 +149,6 @@ export default async function handler(req, res) {
     
     console.log(`[Puppeteer API] 提取到 ${conversationData.messages.length} 則訊息`);
     console.log(`[Puppeteer API] 標題: ${conversationData.title}`);
-    console.log(`[Puppeteer API] Debug 資訊:`, JSON.stringify(conversationData.debug));
-    
-    // 統計 user 和 assistant 訊息數量
-    const userCount = conversationData.messages.filter(m => m.role === 'user').length;
-    const assistantCount = conversationData.messages.filter(m => m.role === 'assistant').length;
-    console.log(`[Puppeteer API] User: ${userCount}, Assistant: ${assistantCount}`);
     
     await browser.close();
     
@@ -299,7 +157,6 @@ export default async function handler(req, res) {
       success: true,
       messages: conversationData.messages,
       title: conversationData.title,
-      debug: conversationData.debug,
       shareUrl
     });
 
