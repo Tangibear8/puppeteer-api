@@ -58,16 +58,18 @@ export default async function handler(req, res) {
     
     console.log('[Puppeteer API] 頁面載入完成，等待渲染...');
     
-    // 嘗試等待對話元素出現
+    // 等待 data-message-author-role 元素出現
+    console.log('[Puppeteer API] 等待對話元素載入...');
     try {
-      await page.waitForSelector('article, [data-testid], .group', { timeout: 10000 });
-      console.log('[Puppeteer API] 找到對話元素');
+      await page.waitForSelector('[data-message-author-role="assistant"]', { timeout: 20000 });
+      console.log('[Puppeteer API] 找到 assistant 訊息');
     } catch (e) {
-      console.log('[Puppeteer API] 無法找到對話元素，繼續等待...');
+      console.log('[Puppeteer API] 無法找到 assistant 訊息，嘗試繼續...');
     }
     
-    // 延長等待時間到 10 秒
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // 再等待 5 秒確保所有元素都載入完成
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    console.log('[Puppeteer API] 等待完成，開始提取對話...');
     
     // 執行 JavaScript 提取對話內容
     console.log('[Puppeteer API] 正在提取對話內容...');
