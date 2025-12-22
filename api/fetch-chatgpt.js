@@ -37,7 +37,12 @@ export default async function handler(req, res) {
     
     // 啟動 Puppeteer with Serverless Chromium
     browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [
+        ...chromium.args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled'
+      ],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
@@ -47,6 +52,13 @@ export default async function handler(req, res) {
     
     // 設定 User-Agent
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // 隱藏 webdriver 特徵
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+      });
+    });
     
     console.log(`[Puppeteer API] 正在載入頁面: ${shareUrl}`);
     
