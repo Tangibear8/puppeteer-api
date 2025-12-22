@@ -1,6 +1,16 @@
 import puppeteer from 'puppeteer';
 
 export default async function handler(req, res) {
+  // 設定 CORS 標頭
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // 處理 OPTIONS 請求（preflight）
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   // 支援 GET 和 POST 請求
   if (req.method === 'GET') {
     return res.status(200).json({ 
