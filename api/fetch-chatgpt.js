@@ -126,6 +126,23 @@ export default async function handler(req, res) {
       const userElements = document.querySelectorAll('[data-message-author-role="user"]');
       const assistantElements = document.querySelectorAll('[data-message-author-role="assistant"]');
       
+      // 更詳細的 assistant 元素分析
+      let assistantDebug = {};
+      if (assistantElements.length > 0) {
+        const firstAssistant = assistantElements[0];
+        assistantDebug = {
+          'outerHTML': firstAssistant.outerHTML.substring(0, 1000),
+          'innerHTML': firstAssistant.innerHTML.substring(0, 500),
+          'textContent': firstAssistant.textContent.substring(0, 200),
+          'childElementCount': firstAssistant.childElementCount,
+          'classList': Array.from(firstAssistant.classList),
+          'hasMarkdown': !!firstAssistant.querySelector('.markdown'),
+          'hasProse': !!firstAssistant.querySelector('.prose'),
+          'hasWhitespace': !!firstAssistant.querySelector('.whitespace-pre-wrap'),
+          'allChildClasses': Array.from(firstAssistant.querySelectorAll('*')).slice(0, 10).map(el => Array.from(el.classList))
+        };
+      }
+      
       const debug = {
         'total': allElements.length,
         'user': userElements.length,
@@ -136,7 +153,8 @@ export default async function handler(req, res) {
         'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null,
         'sampleAssistantHTML': assistantElements.length > 0 ? assistantElements[0].innerHTML.substring(0, 500) : null,
         'sampleUserText': userElements.length > 0 ? userElements[0].textContent.substring(0, 100) : null,
-        'sampleUserHTML': userElements.length > 0 ? userElements[0].innerHTML.substring(0, 500) : null
+        'sampleUserHTML': userElements.length > 0 ? userElements[0].innerHTML.substring(0, 500) : null,
+        'assistantDebug': assistantDebug
       };
       
       // 提取對話訊息（使用更精確的 selector）
