@@ -82,8 +82,25 @@ export default async function handler(req, res) {
         title = titleEl.textContent.replace('ChatGPT - ', '').trim();
       }
       
+      // Debug: 輸出所有可能的選擇器
+      const debug = {
+        'data-message-author-role': document.querySelectorAll('[data-message-author-role]').length,
+        'data-message-id': document.querySelectorAll('[data-message-id]').length,
+        'article': document.querySelectorAll('article').length,
+        '.group': document.querySelectorAll('.group').length
+      };
+      
       // 提取對話訊息（使用更精確的 selector）
       const messageElements = document.querySelectorAll('[data-message-author-role]');
+      
+      // 如果沒有找到，嘗試其他選擇器
+      if (messageElements.length === 0) {
+        console.log('No elements with data-message-author-role, trying alternatives...');
+        const altElements = document.querySelectorAll('[data-message-id]');
+        if (altElements.length > 0) {
+          return { messages: [], title, debug, error: 'Found data-message-id elements but no data-message-author-role' };
+        }
+      }
       
       messageElements.forEach((el) => {
         // 從 data attribute 中提取角色
@@ -118,7 +135,7 @@ export default async function handler(req, res) {
         }
       });
       
-      return { messages, title };
+      return { messages, title, debug };
     });
     
     console.log(`[Puppeteer API] 提取到 ${conversationData.messages.length} 則訊息`);
