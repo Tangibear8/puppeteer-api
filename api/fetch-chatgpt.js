@@ -85,11 +85,18 @@ export default async function handler(req, res) {
       }
       
       // Debug: 輸出所有可能的選擇器
+      const allElements = document.querySelectorAll('[data-message-author-role]');
+      const userElements = document.querySelectorAll('[data-message-author-role="user"]');
+      const assistantElements = document.querySelectorAll('[data-message-author-role="assistant"]');
+      
       const debug = {
-        'data-message-author-role': document.querySelectorAll('[data-message-author-role]').length,
+        'total': allElements.length,
+        'user': userElements.length,
+        'assistant': assistantElements.length,
         'data-message-id': document.querySelectorAll('[data-message-id]').length,
         'article': document.querySelectorAll('article').length,
-        '.group': document.querySelectorAll('.group').length
+        '.group': document.querySelectorAll('.group').length,
+        'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null
       };
       
       // 提取對話訊息（使用更精確的 selector）
