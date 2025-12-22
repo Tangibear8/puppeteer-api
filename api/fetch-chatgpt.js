@@ -82,22 +82,38 @@ export default async function handler(req, res) {
         title = titleEl.textContent.replace('ChatGPT - ', '').trim();
       }
       
-      // 提取對話訊息（嘗試多種 selector）
-      const messageElements = document.querySelectorAll('article, [data-message-author-role], .group');
+      // 提取對話訊息（使用更精確的 selector）
+      const messageElements = document.querySelectorAll('[data-message-author-role]');
       
-      messageElements.forEach((el, index) => {
-        // 嘗試從元素中提取角色
-        const role = el.getAttribute('data-message-author-role') || 
-                     (index % 2 === 0 ? 'user' : 'assistant');
+      messageElements.forEach((el) => {
+        // 從 data attribute 中提取角色
+        const role = el.getAttribute('data-message-author-role');
         
-        // 提取文字內容
-        const textContent = el.textContent.trim();
+        // 只提取實際對話內容，過濾掉標籤
+        // 嘗試多種方式提取內容
+        let content = '';
         
-        // 過濾掉空白和太短的內容
-        if (textContent && textContent.length > 10) {
+        // 方法1：尋找內容區域
+        const contentDiv = el.querySelector('[data-message-content], .markdown, .prose');
+        if (contentDiv) {
+          content = contentDiv.textContent.trim();
+        } else {
+          // 方法2：直接使用元素內容
+          content = el.textContent.trim();
+        }
+        
+        // 過濾掉標籤和空白
+        content = content
+          .replace(/^(ChatGPT said:|You said:)\s*/i, '')  // 移除標籤
+          .replace(/^(ChatGPT|You)\s*:?\s*/i, '')  // 移除角色名稱
+          .trim();
+        
+        // 只保留有實際內容的訊息
+        if (content && content.length > 5 && 
+            !content.match(/^(ChatGPT said|You said):?$/i)) {
           messages.push({
             role: role,
-            content: textContent
+            content: content
           });
         }
       });
