@@ -133,7 +133,10 @@ export default async function handler(req, res) {
         'data-message-id': document.querySelectorAll('[data-message-id]').length,
         'article': document.querySelectorAll('article').length,
         '.group': document.querySelectorAll('.group').length,
-        'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null
+        'sampleAssistantText': assistantElements.length > 0 ? assistantElements[0].textContent.substring(0, 100) : null,
+        'sampleAssistantHTML': assistantElements.length > 0 ? assistantElements[0].innerHTML.substring(0, 500) : null,
+        'sampleUserText': userElements.length > 0 ? userElements[0].textContent.substring(0, 100) : null,
+        'sampleUserHTML': userElements.length > 0 ? userElements[0].innerHTML.substring(0, 500) : null
       };
       
       // 提取對話訊息（使用更精確的 selector）
