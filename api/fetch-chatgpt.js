@@ -178,31 +178,52 @@ export default async function handler(req, res) {
         
         // 針對不同角色使用不同的提取策略
         if (role === 'assistant') {
-          // Assistant 訊息：嘗試多種選擇器
-          const selectors = [
-            '.markdown',
-            '.prose',
-            '[data-message-content]',
-            '.whitespace-pre-wrap',
-            'div[class*="markdown"]',
-            'div[class*="prose"]'
-          ];
+          // Assistant 訊息：內容可能在父元素或相鄰元素中
           
-          for (const selector of selectors) {
-            const contentEl = el.querySelector(selector);
-            if (contentEl && contentEl.textContent.trim()) {
-              content = contentEl.textContent.trim();
-              break;
+          // 策略1：在父元素中尋找內容
+          const parent = el.parentElement;
+          if (parent) {
+            const contentSelectors = [
+              '.markdown',
+              '.prose',
+              '[data-message-content]',
+              '.whitespace-pre-wrap'
+            ];
+            
+            for (const selector of contentSelectors) {
+              const contentEl = parent.querySelector(selector);
+              if (contentEl && contentEl.textContent.trim() && !contentEl.closest('[data-message-author-role]')) {
+                content = contentEl.textContent.trim();
+                break;
+              }
             }
           }
           
-          // 如果還是找不到，嘗試找所有包含文字的 div
+          // 策略2：在相鄰元素中尋找
           if (!content) {
-            const allDivs = el.querySelectorAll('div');
-            for (const div of allDivs) {
-              const text = div.textContent.trim();
-              if (text && text.length > 10 && !text.includes('ChatGPT said')) {
-                content = text;
+            let sibling = el.nextElementSibling;
+            while (sibling && !content) {
+              if (sibling.textContent.trim() && !sibling.hasAttribute('data-message-author-role')) {
+                content = sibling.textContent.trim();
+                break;
+              }
+              sibling = sibling.nextElementSibling;
+            }
+          }
+          
+          // 策略3：在元素內部尋找
+          if (!content) {
+            const selectors = [
+              '.markdown',
+              '.prose',
+              '[data-message-content]',
+              '.whitespace-pre-wrap'
+            ];
+            
+            for (const selector of selectors) {
+              const contentEl = el.querySelector(selector);
+              if (contentEl && contentEl.textContent.trim()) {
+                content = contentEl.textContent.trim();
                 break;
               }
             }
