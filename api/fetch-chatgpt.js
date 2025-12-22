@@ -130,16 +130,29 @@ export default async function handler(req, res) {
       let assistantDebug = {};
       if (assistantElements.length > 0) {
         const firstAssistant = assistantElements[0];
+        const parent = firstAssistant.parentElement;
+        const nextSibling = firstAssistant.nextElementSibling;
+        
         assistantDebug = {
-          'outerHTML': firstAssistant.outerHTML.substring(0, 1000),
-          'innerHTML': firstAssistant.innerHTML.substring(0, 500),
-          'textContent': firstAssistant.textContent.substring(0, 200),
-          'childElementCount': firstAssistant.childElementCount,
-          'classList': Array.from(firstAssistant.classList),
-          'hasMarkdown': !!firstAssistant.querySelector('.markdown'),
-          'hasProse': !!firstAssistant.querySelector('.prose'),
-          'hasWhitespace': !!firstAssistant.querySelector('.whitespace-pre-wrap'),
-          'allChildClasses': Array.from(firstAssistant.querySelectorAll('*')).slice(0, 10).map(el => Array.from(el.classList))
+          'self': {
+            'outerHTML': firstAssistant.outerHTML.substring(0, 1000),
+            'innerHTML': firstAssistant.innerHTML.substring(0, 500),
+            'textContent': firstAssistant.textContent.substring(0, 200),
+            'childElementCount': firstAssistant.childElementCount,
+            'classList': Array.from(firstAssistant.classList)
+          },
+          'parent': parent ? {
+            'tagName': parent.tagName,
+            'classList': Array.from(parent.classList),
+            'outerHTML': parent.outerHTML.substring(0, 1500),
+            'childElementCount': parent.childElementCount
+          } : null,
+          'nextSibling': nextSibling ? {
+            'tagName': nextSibling.tagName,
+            'classList': Array.from(nextSibling.classList),
+            'outerHTML': nextSibling.outerHTML.substring(0, 1000),
+            'textContent': nextSibling.textContent.substring(0, 200)
+          } : null
         };
       }
       
