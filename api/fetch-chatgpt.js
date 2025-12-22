@@ -104,8 +104,21 @@ export default async function handler(req, res) {
       console.log('[Puppeteer API] 無法找到 assistant 訊息，嘗試繼續...');
     }
     
-    // 再等待 5 秒確保所有元素都載入完成
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // 滾動頁面以觸發懶載入
+    console.log('[Puppeteer API] 滾動頁面以載入所有內容...');
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+    });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // 再等待 10 秒確保所有元素都載入完成
+    console.log('[Puppeteer API] 等待內容完全渲染...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
     console.log('[Puppeteer API] 等待完成，開始提取對話...');
     
     // 執行 JavaScript 提取對話內容
