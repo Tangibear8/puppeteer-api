@@ -69,20 +69,52 @@ export default async function handler(req, res) {
     // 延長等待時間到 10 秒
     await new Promise(resolve => setTimeout(resolve, 10000));
     
-    // 獲取渲染後的 HTML
-    const html = await page.content();
+    // 執行 JavaScript 提取對話內容
+    console.log('[Puppeteer API] 正在提取對話內容...');
     
-    // 輸出 HTML 的前 1000 字元供調試
-    console.log('[Puppeteer API] HTML 片段:', html.substring(0, 1000));
+    const conversationData = await page.evaluate(() => {
+      const messages = [];
+      let title = '';
+      
+      // 提取標題
+      const titleEl = document.querySelector('title');
+      if (titleEl) {
+        title = titleEl.textContent.replace('ChatGPT - ', '').trim();
+      }
+      
+      // 提取對話訊息（嘗試多種 selector）
+      const messageElements = document.querySelectorAll('article, [data-message-author-role], .group');
+      
+      messageElements.forEach((el, index) => {
+        // 嘗試從元素中提取角色
+        const role = el.getAttribute('data-message-author-role') || 
+                     (index % 2 === 0 ? 'user' : 'assistant');
+        
+        // 提取文字內容
+        const textContent = el.textContent.trim();
+        
+        // 過濾掉空白和太短的內容
+        if (textContent && textContent.length > 10) {
+          messages.push({
+            role: role,
+            content: textContent
+          });
+        }
+      });
+      
+      return { messages, title };
+    });
     
-    console.log(`[Puppeteer API] HTML 長度: ${html.length} 字元`);
+    console.log(`[Puppeteer API] 提取到 ${conversationData.messages.length} 則訊息`);
+    console.log(`[Puppeteer API] 標題: ${conversationData.title}`);
     
     await browser.close();
     
-    // 回傳 HTML
+    // 回傳對話資料
     res.status(200).json({
       success: true,
-      html,
+      messages: conversationData.messages,
+      title: conversationData.title,
       shareUrl
     });
 
