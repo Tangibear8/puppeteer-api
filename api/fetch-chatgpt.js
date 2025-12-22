@@ -156,16 +156,47 @@ export default async function handler(req, res) {
         const role = el.getAttribute('data-message-author-role');
         
         // 只提取實際對話內容，過濾掉標籤
-        // 嘗試多種方式提取內容
         let content = '';
         
-        // 方法1：尋找內容區域
-        const contentDiv = el.querySelector('[data-message-content], .markdown, .prose');
-        if (contentDiv) {
-          content = contentDiv.textContent.trim();
+        // 針對不同角色使用不同的提取策略
+        if (role === 'assistant') {
+          // Assistant 訊息：嘗試多種選擇器
+          const selectors = [
+            '.markdown',
+            '.prose',
+            '[data-message-content]',
+            '.whitespace-pre-wrap',
+            'div[class*="markdown"]',
+            'div[class*="prose"]'
+          ];
+          
+          for (const selector of selectors) {
+            const contentEl = el.querySelector(selector);
+            if (contentEl && contentEl.textContent.trim()) {
+              content = contentEl.textContent.trim();
+              break;
+            }
+          }
+          
+          // 如果還是找不到，嘗試找所有包含文字的 div
+          if (!content) {
+            const allDivs = el.querySelectorAll('div');
+            for (const div of allDivs) {
+              const text = div.textContent.trim();
+              if (text && text.length > 10 && !text.includes('ChatGPT said')) {
+                content = text;
+                break;
+              }
+            }
+          }
         } else {
-          // 方法2：直接使用元素內容
-          content = el.textContent.trim();
+          // User 訊息：使用原有邏輯
+          const contentDiv = el.querySelector('.whitespace-pre-wrap, [data-message-content]');
+          if (contentDiv) {
+            content = contentDiv.textContent.trim();
+          } else {
+            content = el.textContent.trim();
+          }
         }
         
         // 過濾掉標籤和空白
@@ -190,6 +221,11 @@ export default async function handler(req, res) {
     console.log(`[Puppeteer API] 提取到 ${conversationData.messages.length} 則訊息`);
     console.log(`[Puppeteer API] 標題: ${conversationData.title}`);
     console.log(`[Puppeteer API] Debug 資訊:`, JSON.stringify(conversationData.debug));
+    
+    // 統計 user 和 assistant 訊息數量
+    const userCount = conversationData.messages.filter(m => m.role === 'user').length;
+    const assistantCount = conversationData.messages.filter(m => m.role === 'assistant').length;
+    console.log(`[Puppeteer API] User: ${userCount}, Assistant: ${assistantCount}`);
     
     await browser.close();
     
