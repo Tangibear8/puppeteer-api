@@ -27,7 +27,13 @@ export default async function handler(req, res) {
 
   const { shareUrl } = req.body;
 
-  if (!shareUrl || !shareUrl.includes('chatgpt.com/share/')) {
+  // 支援兩種網址格式：chatgpt.com 和 chat.openai.com
+  const isValidUrl = shareUrl && (
+    shareUrl.includes('chatgpt.com/share/') || 
+    shareUrl.includes('chat.openai.com/share/')
+  );
+  
+  if (!isValidUrl) {
     return res.status(400).json({ error: '請提供有效的 ChatGPT 分享連結' });
   }
 
